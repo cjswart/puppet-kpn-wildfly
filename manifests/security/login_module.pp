@@ -29,7 +29,7 @@ define wildfly::security::login_module(
   Optional[String]                                                                               $target_profile = undef,
   Optional[Hash[Enum['username','password'], String]]                                            $mgmt_user = undef,
   Optional[Hash[Enum['management-http','management-https','ajp','http','https'], Integer[1024]]] $port_properties = undef,
-  Optional[Hash[Enum['management','public'], Stdlib::Compat::Ip_address]]                        $ip_properties = undef,  
+  Optional[Hash[Enum['management','public'], Stdlib::Compat::Ip_address]]                        $ip_properties = undef,
 ) {
 
   include ::wildfly
