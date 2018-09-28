@@ -20,7 +20,29 @@
 #    name1: value1
 #    name2: value2
 #  ```
+#[*target_profile*]
+# String wich Sets the target profile to prefix resource name. Requires domain mode.
 #
+#[*mgmt_user*]
+# A hash with username and password as a string
+# Example
+# { 'username' => 'puppet', 'password' => fqdn_rand_string(30) }
+#
+#[*port_properties*]
+#  A hash with numeric values for all port nummers
+# Example
+#  { 'management-http' => 9990,
+#    'management-https' => 9993,
+#    'ajp' => 8009,
+#    'http' => 8080,
+#    'https' => 8443 }
+#
+#[*ip_properties*]
+# A hash with ipaddresses for management and public as a ip4 ip address
+# Example
+# { 'management' => '127.0.0.1',  'public'     => '127.0.0.1' }
+#
+
 define wildfly::security::login_module(
   $domain,
   $code,

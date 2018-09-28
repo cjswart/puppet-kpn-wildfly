@@ -19,12 +19,34 @@
 #      }
 #    }
 #
+#[*target_profile*]
+# String wich Sets the target profile to prefix resource name. Requires domain mode.
+#
+#[*mgmt_user*]
+# A hash with username and password as a string
+# Example
+# { 'username' => 'puppet', 'password' => fqdn_rand_string(30) }
+#
+#[*port_properties*]
+#  A hash with numeric values for all port nummers
+# Example
+#  { 'management-http' => 9990,
+#    'management-https' => 9993,
+#    'ajp' => 8009,
+#    'http' => 8080,
+#    'https' => 8443 }
+#
+#[*ip_properties*]
+# A hash with ipaddresses for management and public as a ip4 ip address
+# Example
+# { 'management' => '127.0.0.1',  'public'     => '127.0.0.1' }
+#
 define wildfly::security::domain(
   Optional[Hash]                                                                                 $login_modules = undef,
   Optional[String]                                                                               $target_profile = undef,
   Optional[Hash[Enum['username','password'], String]]                                            $mgmt_user = undef,
   Optional[Hash[Enum['management-http','management-https','ajp','http','https'], Integer[1024]]] $port_properties = undef,
-  Optional[Hash[Enum['management','public'], Stdlib::Compat::Ip_address]]                        $ip_properties = undef,  
+  Optional[Hash[Enum['management','public'], Stdlib::Compat::Ip_address]]                        $ip_properties = undef,
 ) {
 
   include ::wildfly

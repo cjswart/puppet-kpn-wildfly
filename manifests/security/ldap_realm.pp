@@ -126,6 +126,29 @@
 # [*cache_failures*]
 #  Should failures be cached? Default: `false`
 #
+#[*target_profile*]
+# String wich Sets the target profile to prefix resource name. Requires domain mode.
+#
+#[*mgmt_user*]
+# A hash with username and password as a string
+# Example
+# { 'username' => 'puppet', 'password' => fqdn_rand_string(30) }
+#
+#[*port_properties*]
+#  A hash with numeric values for all port nummers
+# Example
+#  { 'management-http' => 9990,
+#    'management-https' => 9993,
+#    'ajp' => 8009,
+#    'http' => 8080,
+#    'https' => 8443 }
+#
+#[*ip_properties*]
+# A hash with ipaddresses for management and public as a ip4 ip address
+# Example
+# { 'management' => '127.0.0.1',  'public'     => '127.0.0.1' }
+#
+#
 define wildfly::security::ldap_realm(
   $ldap_url,
   $ldap_search_dn,
@@ -155,40 +178,65 @@ define wildfly::security::ldap_realm(
   Integer[0] $max_cache_size            = 1000,
   Integer[0] $cache_eviction_time       = 900,
   $cache_failures                       = false,
+  Optional[String]                                                                               $target_profile = undef,
+  Optional[Hash[Enum['username','password'], String]]                                            $mgmt_user = undef,
+  Optional[Hash[Enum['management-http','management-https','ajp','http','https'], Integer[1024]]] $port_properties = undef,
+  Optional[Hash[Enum['management','public'], Stdlib::Compat::Ip_address]]                        $ip_properties = undef,
 ) {
+
+  include ::wildfly
+  $_mgmt_user = pick($mgmt_user, $::wildfly::mgmt_user)
+  $_port_properties = pick($port_properties, $::wildfly::port_properties)
+  $_ip_properties = pick($ip_properties, $::wildfly::ip_properties)
 
   # Create LDAP connectivity
   wildfly::resource { "/core-service=management/ldap-connection=${realm_name}-LDAPConnection":
-    content => {
+    content         => {
       'url'               => $ldap_url,
       'search-dn'         => $ldap_search_dn,
       'search-credential' => $ldap_search_credential,
     },
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
 
   # Define the security realm
   -> wildfly::resource { "/core-service=management/security-realm=${realm_name}":
-    content => {},
+    content         => {},
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
 
   # Make sure the 'properties' authentication method is removed. Only 1 authentication method
   # is allowed in a security realm at one time
   -> wildfly::resource { "/core-service=management/security-realm=${realm_name}/authentication=properties":
-    ensure  => absent,
-    content => {},
+    ensure          => absent,
+    content         => {},
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
 
   # Bypass LDAP authentication when accessing management interface locally
   -> wildfly::resource { "/core-service=management/security-realm=${realm_name}/authentication=local":
-    content => {
+    content         => {
       'default-user'       => '$local',
       'skip-group-loading' => true,
     },
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
 
   # Specify LDAP authentication for the security realm
   -> wildfly::resource { "/core-service=management/security-realm=${realm_name}/authentication=ldap":
-    content => {
+    content         => {
       'connection'            => "${realm_name}-LDAPConnection",
       'base-dn'               => $ldap_user_base_dn,
       'user-dn'               => $authentication_user_dn,
@@ -197,13 +245,17 @@ define wildfly::security::ldap_realm(
       'recursive'             => $authentication_recursive,
       'allow-empty-passwords' => $authentication_allow_empty_passwords,
     },
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
 
   # Configure the LDAP parameters so it can find the groups a user belongs to
   # lint:ignore:arrow_alignment
   -> wildfly::resource { "/core-service=management/security-realm=${realm_name}/authorization=ldap":
-    recursive => true,
-    content   => {
+    recursive       => true,
+    content         => {
       'connection'     => "${realm_name}-LDAPConnection",
       'group-search'   => {
         'group-to-principal' => {
@@ -236,6 +288,10 @@ define wildfly::security::ldap_realm(
               'max-cache-size' => $max_cache_size,
       }}}},
     },
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
   # lint:endignore
 
@@ -250,24 +306,36 @@ define wildfly::security::ldap_realm(
     '/core-service=management/access=authorization/role-mapping=Operator',
     '/core-service=management/access=authorization/role-mapping=SuperUser',
   ]:
-    content => {},
+    content         => {},
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
 
   # Configure Wildfly to use RBAC authorization
   -> wildfly::resource { '/core-service=management/access=authorization':
-    content => {
+    content         => {
       'provider' => 'rbac',
-    }
+    },
+    profile         => $target_profile,
+    mgmt_user       => $_mgmt_user,
+    port_properties => $_port_properties,
+    ip_properties   => $_ip_properties,
   }
 
   if str2bool($apply_to_management_interface) {
     # Apply our newly created realm to the management interfaces
     wildfly::resource { '/core-service=management/management-interface=http-interface':
-      content => {
+      content         => {
         'security-realm' => $realm_name,
         'socket-binding' => 'management-http',
         'sasl-protocol'  => 'remote',
       },
+      profile         => $target_profile,
+      mgmt_user       => $_mgmt_user,
+      port_properties => $_port_properties,
+      ip_properties   => $_ip_properties,
     }
 
     Wildfly::Resource['/core-service=management/access=authorization']
